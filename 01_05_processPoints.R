@@ -7,13 +7,15 @@ rm(list = ls())
 # Load data ---------------------------------------------------------------
 
 # Zone
-zne <- shapefile('../shp/bse/zone_prj_fnl.shp')
+zne <- shapefile('../shp/bse/zone_geo_fnl_3.shp')
 zne@data$gid <- 1
 zne <- aggregate(zne, 'gid')
 
 # Points
 pnt <- shapefile('../shp/pnt/points.shp')
-pnt_erk <- c((72 + 52 / 60 + 32 / 3600), (4 + 49/60 + 46 /36000))
+
+# Finca Erika
+pnt_erk <- c((72 + (52 / 60) + (32 / 3600) ) * -1, (4 + 49/60 + 46 /36000))
 pnt <- rbind(coordinates(pnt), pnt_erk) %>% 
   as.data.frame %>% 
   as_tibble %>% 
@@ -26,7 +28,6 @@ rm(pnt_erk)
 bio <- list.files('../rst/climate/chelsa/crn/1ha/bios', full.names = T, pattern = '.tif$') %>% 
   mixedsort %>% 
   stack()
-
 msk <- raster::getData('worldclim', var = 'prec', res = 0.5, lon = as.numeric(pnt[1,2]), lat = as.numeric(pnt[1,3]) )
 zne <- spTransform(zne, CRSobj = crs(msk))
 msk <- msk[[1]] %>% raster::crop(., zne) %>% raster::mask(., zne)
@@ -40,7 +41,7 @@ pnt <- coordinates(pnt)[!dup,]
 pnt <- pnt %>% 
   as_tibble %>% 
   mutate(id = 1:nrow(.)) %>% 
-  setNames(c('x', 'y', 'id'))
+  setNames(c('id', 'x', 'y'))
 swd <- raster::extract(bio, pnt[,2:3])
 swd <- cbind(pnt, swd)
 swd <- drop_na(swd)
