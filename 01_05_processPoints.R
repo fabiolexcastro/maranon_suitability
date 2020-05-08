@@ -27,7 +27,20 @@ rm(pnt_erk)
 # Climate
 bio <- list.files('../rst/climate/chelsa/crn/1ha/bios', full.names = T, pattern = '.tif$') %>% 
   mixedsort %>% 
-  stack()
+  stack() %>% 
+  raster::crop(., zne) %>% 
+  raster::mask(., zne)
+
+# Soils resampling
+sls <- list.files('../rst/soils/zone', full.names = TRUE, pattern = '.tif$') 
+sls <- sls[-grep('texture', sls, value = FALSE)]
+sls <- stack(sls)
+sls <- sls %>% raster::crop(., zne) %>% raster::mask(., zne)
+
+bio_msk <- bio[[1]] * 0 + 1
+sls_rsm <- raster::resample(sls, bio_msk, method = 'ngb')
+stk <- stack(sls_rsm, bio)
+
 msk <- raster::getData('worldclim', var = 'prec', res = 0.5, lon = as.numeric(pnt[1,2]), lat = as.numeric(pnt[1,3]) )
 zne <- spTransform(zne, CRSobj = crs(msk))
 msk <- msk[[1]] %>% raster::crop(., zne) %>% raster::mask(., zne)
@@ -42,7 +55,7 @@ pnt <- pnt %>%
   as_tibble %>% 
   mutate(id = 1:nrow(.)) %>% 
   setNames(c('id', 'x', 'y'))
-swd <- raster::extract(bio, pnt[,2:3])
+swd <- raster::extract(stk, pnt[,2:3])
 swd <- cbind(pnt, swd)
 swd <- drop_na(swd)
 
@@ -69,6 +82,3 @@ back_swd  <- raster::extract(bio, back) %>% cbind(coordinates(back), .) %>% as.d
 dir.create('../tbl/mdl/run5')
 write.csv(back_swd, '../tbl/mdl/run5/back_swd.csv', row.names = FALSE)
 write.csv(swd, '../tbl/mdl/run5/occ_swd.csv', row.names = FALSE)
-
-
-
